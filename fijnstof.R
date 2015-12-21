@@ -26,6 +26,11 @@ ms2$lat <- as.numeric(sapply(stations, function(s) gregexprr('[0-9]+[.][0-9]+', 
 ms2$long <- as.numeric(sapply(stations, function(s) gregexprr('[0-9]+[.][0-9]+', s)[2]))
 ms2$nr <- substr(ms2$nr, 5, 7)
 
+stations <- jsonlite::fromJSON('http://www.luchtkwaliteitmetingen.nl/map/list_stations?component=PM10')
+crds <- do.call(rbind, stations$station$station$geo$coordinates)
+ms3 <- data.frame(lat=crds[, 1], long=crds[, 2], nr=stations$station$station$id)
+colnames(pm10) %in% ms3$nr # odd
+
 ms2 <- ms2[ms2$nr %in% names(pm10), ]
 ms2 <- ms2[order(ms2$nr), ]
 day <- pm10$date
@@ -117,5 +122,5 @@ for (i in 1:nrow(pm10_y)){
 # sum(sqrt(dists) * pm10[2, ], na.rm=T) / sum(sqrt(dists[!is.na(pm10[2, ])]))
 
 # stations from rivm api, no station numbers?
-# jsonlite::fromJSON('http://www.luchtkwaliteitmetingen.nl/map/list_stations?component=')
+# 
 # stations <- jsonlite::fromJSON('http://www.luchtkwaliteitmetingen.nl/map/list_stations?component=PM10')
