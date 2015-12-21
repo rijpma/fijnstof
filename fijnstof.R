@@ -50,6 +50,7 @@ pm10_y <- y_ave > 40 | y_nxc > 35
 pm10_y[is.na(y_cpl)] <- NA
 
 pm10_y <- pm10_y[, colnames(pm10_y) %in% ms2$nr]
+pm10_y <- pm10_y[, order(colnames(pm10_y))]
 y_ave <- y_ave[, colnames(y_ave) %in% ms2$nr]
 
 # big file!
@@ -78,7 +79,6 @@ for (i in 2:ncol(y_ave)){
     lines(year, y_ave[, i], type='b', col=2)
 }
 dev.off()
-
 
 inwvrbs <- grepr('^INW', names(pop@data))
 fill <- data.frame(year=year, nstat=NA, nexposed=NA)
