@@ -1,5 +1,5 @@
 setwd('~/downloads/data/fijnstof/')
-source('https://raw.githubusercontent.com/rijpma/qqt/master/qqtheader.r')
+source('https://raw.githubusercontent.com/rijpma/opgaafrollen/master/rolfunctions.r')
 options(stringsAsFactors=FALSE)
 
 path_cbsvier <- '2014-cbs-vierkant-100m/CBSvierkant100m201410.shp'
@@ -102,7 +102,7 @@ for (i in 1:nrow(pm10_y)){
     cat(i, '-')
 }
 
-
+write.csv('fijnstopexpsr.csv')
 
 # old stuff #
 
