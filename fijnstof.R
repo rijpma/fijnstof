@@ -5,8 +5,11 @@ options(stringsAsFactors=FALSE)
 path_cbsvier <- '2014-cbs-vierkant-100m/CBSvierkant100m201410.shp'
 
 library(sp)
+library(maptools)
+library(deldir)
 library(raster)
 library(rgdal)
+library(jsonlite)
 
 rdriehoek <- CRS("+init=epsg:28992")
 wgs <- CRS("+proj=longlat +datum=WGS84 +no_defs ")
@@ -53,14 +56,6 @@ pm10_y <- pm10_y[, colnames(pm10_y) %in% ms2$nr]
 pm10_y <- pm10_y[, order(colnames(pm10_y))]
 y_ave <- y_ave[, colnames(y_ave) %in% ms2$nr]
 
-# big file!
-# http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2014/2013-kaart-vierkanten-art.htm
-pop <- readShapeSpatial(path_cbsvier)
-# pop <- pop[coordinates(pop)[,1] > 100000 & coordinates(pop)[,1] < 110000 &
-#            coordinates(pop)[,2] > 450000 & coordinates(pop)[,2] < 460000, ]
-pop@data[pop@data < 0] <- NA
-ppop <- SpatialPixelsDataFrame(coordinates(pop), data=pop@data[grep('^INW', names(pop@data))], proj4string=rdriehoek)
-
 stations <- SpatialPoints(cbind(ms2$long, ms2$lat), proj4string=wgs)
 stations_rd <- spTransform(stations, CRSobj=rdriehoek)
 
@@ -80,12 +75,10 @@ for (i in 2:ncol(y_ave)){
 }
 dev.off()
 
-inwvrbs <- grepr('^INW', names(pop@data))
-fill <- data.frame(year=year, nstat=NA, nexposed=NA)
+
+vnlist <- vector(mode="list", length(nrow(pm10_y)))
 for (i in 1:nrow(pm10_y)){
     idx <- which(!is.na(pm10_y[i, ]))
-    fill$nstat[i] <- length(idx)
-
     vn <- deldir(coordinates(stations_rd[idx])[, 1], coordinates(stations_rd[idx])[, 2])
     tiles <- tile.list(vn)
     polys <- vector(mode="list", length=length(tiles))
@@ -93,16 +86,28 @@ for (i in 1:nrow(pm10_y)){
         polycrds <- cbind(tiles[[j]]$x, tiles[[j]]$y)
         polys[[j]] <- Polygons(list(Polygon(polycrds)), ID=ms2$nr[idx][j])
     }
-    vn <- SpatialPolygons(polys, proj4str=CRS("+init=epsg:28992"))
+    vnlist[[i]] <- SpatialPolygons(polys, proj4str=CRS("+init=epsg:28992"))
+}
 
+# big file!
+# http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2014/2013-kaart-vierkanten-art.htm
+pop <- readShapeSpatial(path_cbsvier)
+# pop <- pop[coordinates(pop)[,1] > 100000 & coordinates(pop)[,1] < 110000 &
+#            coordinates(pop)[,2] > 450000 & coordinates(pop)[,2] < 460000, ]
+pop@data[pop@data < 0] <- NA
+ppop <- SpatialPixelsDataFrame(coordinates(pop), data=pop@data[grep('^INW', names(pop@data))], proj4string=rdriehoek)
+
+inwvrbs <- grepr('^INW', names(pop@data))
+fill <- data.frame(year=year, nstat=NA, nexposed=NA)
+for (i in 1:nrow(pm10_y)){
+    idx <- names(vnlist[[1]])
+    fill$nstat[i] <- length(idx)
     rpop <- raster(ppop[inwvrbs[i]])
-    
-    fill$nexposed[i] <- sum(extract(rpop, vn, fun=sum, na.rm=T) * pm10_y[i, idx], na.rm=T)
-
+    fill$nexposed[i] <- sum(extract(rpop, vnlist[[i]], fun=sum, na.rm=T) * pm10_y[i, idx], na.rm=T)
     cat(i, '-')
 }
 
-write.csv('fijnstopexpsr.csv')
+write.csv(fill, 'fijnstofexpsr.csv')
 
 # old stuff #
 
