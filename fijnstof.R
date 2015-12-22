@@ -62,7 +62,7 @@ stations_rd <- spTransform(stations, CRSobj=rdriehoek)
 nl <- readShapeSpatial('nl/nl.shp', proj4string=wgs)
 nl_rd <- spTransform(nl, CRSobj=rdriehoek)
 
-pdf('stations.pdf')
+pdf('metingen.pdf')
 par(mfrow=c(1, 1))
 plot(nl_rd)
 text(coordinates(stations_rd)[, 1], coordinates(stations_rd)[, 2], ms2$nr, col=2, cex=0.8)
@@ -75,11 +75,13 @@ for (i in 2:ncol(y_ave)){
 }
 dev.off()
 
-
+nlbox <- bbox(nl_rd)
 vnlist <- vector(mode="list", length(nrow(pm10_y)))
 for (i in 1:nrow(pm10_y)){
     idx <- which(!is.na(pm10_y[i, ]))
-    vn <- deldir(coordinates(stations_rd[idx])[, 1], coordinates(stations_rd[idx])[, 2])
+    vn <- deldir(coordinates(stations_rd[idx])[, 1], 
+                 coordinates(stations_rd[idx])[, 2], 
+                 rw=c(nlbox))
     tiles <- tile.list(vn)
     polys <- vector(mode="list", length=length(tiles))
     for (j in 1:length(tiles)){
@@ -89,6 +91,13 @@ for (i in 1:nrow(pm10_y)){
     vnlist[[i]] <- SpatialPolygons(polys, proj4str=CRS("+init=epsg:28992"))
 }
 
+pdf('stationsdekking.pdf')
+for (vn in vnlist){
+    plot(nl_rd)
+    plot(vn, add=T, border=2)
+    title(main=)
+}
+dev.off()
 # big file!
 # http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2014/2013-kaart-vierkanten-art.htm
 pop <- readShapeSpatial(path_cbsvier)
