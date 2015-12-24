@@ -2,8 +2,6 @@ setwd('~/downloads/data/fijnstof/')
 source('https://raw.githubusercontent.com/rijpma/opgaafrollen/master/rolfunctions.r')
 options(stringsAsFactors=FALSE)
 
-path_cbsvier <- '2014-cbs-vierkant-100m/CBSvierkant100m201410.shp'
-
 library(sp)
 library(maptools)
 library(deldir)
@@ -11,10 +9,9 @@ library(raster)
 library(rgdal)
 library(jsonlite)
 
+path_cbsvier <- '2014-cbs-vierkant-100m/CBSvierkant100m201410.shp'
 rdriehoek <- CRS("+init=epsg:28992")
 wgs <- CRS("+proj=longlat +datum=WGS84 +no_defs ")
-# alternative: CRS("+proj=sterea +lat_0=52.15616055555555 +lon_0=5.38763888888889 +k=0.9999079 +x_0=155000 +y_0=463000 +ellps=bessel +towgs84=565.417,50.3319,465.552,-0.398957,0.343988,-1.8774,4.0725 +units=m +no_defs ")
-# from http://cs2cs.mygeodata.eu
 
 nms <- read.table('pm10.csv', nrows=1, sep=',')
 pm10 <- read.csv('pm10.csv', header=T)
@@ -47,7 +44,7 @@ y_ave <- aggregate.data.frame(pm10[, grepl('\\d+', names(pm10))],
     by=list(year=yrs), mean, na.rm=T)
 y_nxc <- aggregate.data.frame(pm10[, grepl('\\d+', names(pm10))], 
     by=list(year=yrs), function(x) sum(x > 50, na.rm=T))
-# careful, NA does not pass in this sum, but corrected by adding to y_ave
+# careful, NA does not pass in sum, but corrected by adding to y_ave
 year <- y_ave$year
 pm10_y <- y_ave > 40 | y_nxc > 35
 pm10_y[is.na(y_cpl)] <- NA
@@ -98,6 +95,7 @@ for (vn in vnlist){
     title(main=)
 }
 dev.off()
+
 # big file!
 # http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2014/2013-kaart-vierkanten-art.htm
 pop <- readShapeSpatial(path_cbsvier)
@@ -109,7 +107,7 @@ ppop <- SpatialPixelsDataFrame(coordinates(pop), data=pop@data[grep('^INW', name
 inwvrbs <- grepr('^INW', names(pop@data))
 fill <- data.frame(year=year, nstat=NA, nexposed=NA)
 for (i in 1:nrow(pm10_y)){
-    idx <- names(vnlist[[1]])
+    idx <- names(vnlist[[i]])
     fill$nstat[i] <- length(idx)
     rpop <- raster(ppop[inwvrbs[i]])
     fill$nexposed[i] <- sum(extract(rpop, vnlist[[i]], fun=sum, na.rm=T) * pm10_y[i, idx], na.rm=T)
@@ -118,9 +116,7 @@ for (i in 1:nrow(pm10_y)){
 
 write.csv(fill, 'fijnstofexpsr.csv')
 
-# old stuff #
-
-# # distances
+# # distance weighted from all stations
 # # 3s for 2284
 # (((nrow(pop) / nrow(pop)) * 3) * nrow(pm10)) / 60 / 60
 # # 1830 hours...
@@ -134,7 +130,3 @@ write.csv(fill, 'fijnstofexpsr.csv')
 # # assuming stable stations
 # rowSums(sqrt(dists) * pm10[2:3, ], na.rm=T) / rowSums(sqrt(dists[!is.na(pm10[2:3, ])]))
 # sum(sqrt(dists) * pm10[2, ], na.rm=T) / sum(sqrt(dists[!is.na(pm10[2, ])]))
-
-# stations from rivm api, no station numbers?
-# 
-# stations <- jsonlite::fromJSON('http://www.luchtkwaliteitmetingen.nl/map/list_stations?component=PM10')
