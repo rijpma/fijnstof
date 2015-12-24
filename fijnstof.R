@@ -1,6 +1,19 @@
 setwd('~/downloads/data/fijnstof/')
-source('https://raw.githubusercontent.com/rijpma/opgaafrollen/master/rolfunctions.r')
 options(stringsAsFactors=FALSE)
+
+grepr <- function(pattern, x, ...){
+    idx <- grep(pattern, x, ...)
+    return(x[idx])
+}
+gregexprr <- function(pattern, string){
+    # return all string matches of a regular expression
+    # todo: check whether/how it work on multiple strings at once
+
+    rgx <- gregexpr(pattern, string)
+    out <- substring(string, rgx[[1]], rgx[[1]] + attr(rgx[[1]], 'match.length') - 1)
+    return(out)
+}
+
 
 library(sp)
 library(maptools)
@@ -15,7 +28,7 @@ wgs <- CRS("+proj=longlat +datum=WGS84 +no_defs ")
 
 nms <- read.table('pm10.csv', nrows=1, sep=',')
 pm10 <- read.csv('pm10.csv', header=T)
-names(pm10) <- c('date', paste0('', nms[-1]))
+names(pm10) <- c('date', nms[-1])
 pm10$year <- as.numeric(sapply(pm10$date, function(x) strsplit(x, '/')[[1]][3]))
 pm10$year <- ifelse(pm10$year < 90, pm10$year + 2000, pm10$year + 1900)
 pm10 <- pm10[pm10$year >= 2000, ]
@@ -29,7 +42,7 @@ ms2$nr <- substr(ms2$nr, 5, 7)
 stations <- jsonlite::fromJSON('http://www.luchtkwaliteitmetingen.nl/map/list_stations?component=PM10')
 crds <- do.call(rbind, stations$station$station$geo$coordinates)
 ms3 <- data.frame(lat=crds[, 1], long=crds[, 2], nr=stations$station$station$id)
-colnames(pm10) %in% ms3$nr # odd
+colnames(pm10) %in% as.character(ms3$nr) # odd
 
 ms2 <- ms2[ms2$nr %in% names(pm10), ]
 ms2 <- ms2[order(ms2$nr), ]
@@ -106,7 +119,7 @@ ppop <- SpatialPixelsDataFrame(coordinates(pop), data=pop@data[grep('^INW', name
 
 inwvrbs <- grepr('^INW', names(pop@data))
 fill <- data.frame(year=year, nstat=NA, nexposed=NA)
-for (i in 1:nrow(pm10_y)){
+for (i in 1:nrow(pm10_y)){ # parallel?
     idx <- names(vnlist[[i]])
     fill$nstat[i] <- length(idx)
     rpop <- raster(ppop[inwvrbs[i]])
@@ -115,6 +128,7 @@ for (i in 1:nrow(pm10_y)){
 }
 
 write.csv(fill, 'fijnstofexpsr.csv')
+plot(nexposed ~ year, data=fill, type='b', bty='l', col=2)
 
 # # distance weighted from all stations
 # # 3s for 2284
