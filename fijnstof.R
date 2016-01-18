@@ -58,22 +58,6 @@ ranges <- lapply(maps, function(x) range(x[x >= 0]))
 min(unlist(ranges))
 max(unlist(ranges))
 
-file <- "conc_pm10_2014.aps"
-mat <- maps[[file]]
-info <- infos[[file]]
-mat[mat==-999] <- NA
-mat <- as.matrix(mat)
-topleft = c(xmn=info$V18, xmx=info$V18 + info$V21*info$V24, ymn=info$V20 - info$V22*info$V26, ymx=info$V20)
-topleft <- topleft*1000
-r <- raster::raster(mat, xmn=topleft['xmn'], xmx=topleft['xmx'], ymn=topleft['ymn'], ymx=topleft['ymx'])
-r5km <- aggregate(r, fact=5, fun=mean)
-polys5km <- rasterToPolygons(r5)
-
-
-plot(df5, col=factor(cut(df5$layer, 9), labels=RColorBrewer::brewer.pal(9, 'RdPu')))
-plot(df5, col=as.character(factor(cut(df5$layer, 9), labels=RColorBrewer::brewer.pal(9, 'RdPu'))))
-axis(1)
-
 range(unlist(lapply(maps, function(x) range(x[x >= 0]))))
 
 polydfs <- list()
@@ -94,12 +78,40 @@ for (file in files){
     abline(v=102552.030389, h=496472.150836)
 } 
 dev.off()
+length(polydfs)
+dim(ppop)
 
+polyears <- gsub('.*_|[.].*', '', names(polydfs))
+x <- raster::extract(rpop, polydfs[[1]]) 
+# returns list of values in r for each row of polysdfs data
+# so just sum them and multiply them with the amounts in each poly
 
+# big file!
+# http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2014/2013-kaart-vierkanten-art.htm
+pop <- readShapeSpatial(path_cbsvier)
+# pop <- pop[coordinates(pop)[,1] > 100000 & coordinates(pop)[,1] < 110000 &
+#            coordinates(pop)[,2] > 450000 & coordinates(pop)[,2] < 460000, ]
+pop@data[pop@data < 0] <- NA
+ppop <- SpatialPixelsDataFrame(coordinates(pop), data=pop@data[grep('^INW', names(pop@data))], proj4string=rdriehoek)
 
-# and now either make the pop grid or the fijnstofgrid into polygons
-# fijnstofgrid ought to be aggregated to 5km anyway, probably best
+inwvrbs <- grepr('^INW', names(pop@data))
+fill <- data.frame(year=as.numeric(polyears), nstat=NA, exposurexpersons=NA)
+for (i in 1:length(polydfs)){
+    polys <- polydfs[[i]]
+    rpop <- raster::raster(ppop[i])
+    fill$exposurexpersons[i] <- sum(raster::extract(rpop, polys, fun=sum, na.rm=T) * polys@data, na.rm=T)
 
+    # idx <- names(vnlist[[i]])
+    # fill$nstat[i] <- length(idx)
+    # rpop <- raster(ppop[inwvrbs[i]])
+    # fill$nexposed[i] <- sum(extract(rpop, vnlist[[i]], fun=sum, na.rm=T) * pm10_y[i, idx], na.rm=T)
+    cat(i, '-')
+}
+
+write.csv(fill, 'fijnstofexpsr.csv')
+plot(exposurexpersons ~ year, data=fill, type='b', bty='l', col=2)
+
+# alternative: through direct measurement station data
 
 nms <- read.table('pm10.csv', nrows=1, sep=',')
 pm10 <- read.csv('pm10.csv', header=T)
@@ -147,6 +159,7 @@ stations_rd <- spTransform(stations, CRSobj=rdriehoek)
 nl <- readShapeSpatial('nl/nl.shp', proj4string=wgs)
 nl_rd <- spTransform(nl, CRSobj=rdriehoek)
 
+
 pdf('metingen.pdf')
 par(mfrow=c(1, 1))
 plot(nl_rd)
@@ -176,6 +189,18 @@ for (i in 1:nrow(pm10_y)){
     vnlist[[i]] <- SpatialPolygons(polys, proj4str=CRS("+init=epsg:28992"))
 }
 
+
+inwvrbs <- grepr('^INW', names(pop@data))
+fill <- data.frame(year=as.numeric(polyears), nstat=NA, exposurexpersons=NA)
+for (i in 1:length(vnlist)){
+    # idx <- names(vnlist[[i]])
+    # fill$nstat[i] <- length(idx)
+    # rpop <- raster(ppop[inwvrbs[i]])
+    # fill$nexposed[i] <- sum(extract(rpop, vnlist[[i]], fun=sum, na.rm=T) * pm10_y[i, idx], na.rm=T)
+    cat(i, '-')
+}
+
+
 pdf('stationsdekking.pdf')
 for (vn in vnlist){
     plot(nl_rd)
@@ -183,27 +208,6 @@ for (vn in vnlist){
     title(main=)
 }
 dev.off()
-
-# big file!
-# http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2014/2013-kaart-vierkanten-art.htm
-pop <- readShapeSpatial(path_cbsvier)
-# pop <- pop[coordinates(pop)[,1] > 100000 & coordinates(pop)[,1] < 110000 &
-#            coordinates(pop)[,2] > 450000 & coordinates(pop)[,2] < 460000, ]
-pop@data[pop@data < 0] <- NA
-ppop <- SpatialPixelsDataFrame(coordinates(pop), data=pop@data[grep('^INW', names(pop@data))], proj4string=rdriehoek)
-
-inwvrbs <- grepr('^INW', names(pop@data))
-fill <- data.frame(year=year, nstat=NA, nexposed=NA)
-for (i in 1:nrow(pm10_y)){ # parallel?
-    idx <- names(vnlist[[i]])
-    fill$nstat[i] <- length(idx)
-    rpop <- raster(ppop[inwvrbs[i]])
-    fill$nexposed[i] <- sum(extract(rpop, vnlist[[i]], fun=sum, na.rm=T) * pm10_y[i, idx], na.rm=T)
-    cat(i, '-')
-}
-
-write.csv(fill, 'fijnstofexpsr.csv')
-plot(nexposed ~ year, data=fill, type='b', bty='l', col=2)
 
 # # distance weighted from all stations
 # # 3s for 2284
