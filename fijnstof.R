@@ -26,6 +26,81 @@ path_cbsvier <- '2014-cbs-vierkant-100m/CBSvierkant100m201410.shp'
 rdriehoek <- CRS("+init=epsg:28992")
 wgs <- CRS("+proj=longlat +datum=WGS84 +no_defs ")
 
+widths=c(I=3, I=3, I=3, I=3, X=1, A=10, X=1, A=10, X=1, A=10, X=1, A=22, X=1, A=6, X=1, I=2, X=1, F=8, X=1, F=8, I=3, I=3, X=1, F=8, X=1, F=8)
+setwd('~/downloads/data/fijnstof/conc_pm10_2000-2014')
+
+files <- list.files()
+infos <- list()
+for (file in files){
+    # infos[[paste0(gsub('.*_|[.]aps', '', file))]] <- read.fwf(path, widths=widths, nrow=1)    
+    infos[[file]] <- read.fwf(file, widths=widths, nrow=1)    
+}
+maps <- list()
+maps[["conc_pm10_2000.aps"]] <- read.table("conc_pm10_2000.aps", skip=1)
+maps[["conc_pm10_2001.aps"]] <- read.table("conc_pm10_2001.aps", skip=1)
+maps[["conc_pm10_2002.aps"]] <- read.fwf("conc_pm10_2002.aps", widths=rep(6, infos[["conc_pm10_2002.aps"]]$V21), skip=1)
+maps[["conc_pm10_2003.aps"]] <- read.fwf("conc_pm10_2003.aps", widths=rep(6, infos[["conc_pm10_2003.aps"]]$V21), skip=1)
+maps[["conc_pm10_2004.aps"]] <- read.fwf("conc_pm10_2004.aps", widths=rep(6, infos[["conc_pm10_2004.aps"]]$V21), skip=1)
+maps[["conc_pm10_2005.aps"]] <- read.table("conc_pm10_2005.aps", skip=1)
+maps[["conc_pm10_2006.aps"]] <- read.table("conc_pm10_2006.aps", skip=1)
+maps[["conc_pm10_2007.aps"]] <- read.table("conc_pm10_2007.aps", skip=1)
+maps[["conc_pm10_2008.aps"]] <- read.table("conc_pm10_2008.aps", skip=1)
+maps[["conc_pm10_2009.aps"]] <- read.table("conc_pm10_2009.aps", skip=1)
+maps[["conc_pm10_2010.aps"]] <- read.table("conc_pm10_2010.aps", skip=1)
+maps[["conc_pm10_2011.aps"]] <- read.table("conc_pm10_2011.aps", skip=1)
+maps[["conc_pm10_2012.aps"]] <- read.table("conc_pm10_2012.aps", skip=1)
+maps[["conc_pm10_2013.aps"]] <- read.table("conc_pm10_2013.aps", skip=1)
+maps[["conc_pm10_2014.aps"]] <- read.table("conc_pm10_2014.aps", skip=1)
+
+setwd('~/downloads/data/fijnstof/')
+
+ranges <- lapply(maps, function(x) range(x[x >= 0]))
+min(unlist(ranges))
+max(unlist(ranges))
+
+file <- "conc_pm10_2014.aps"
+mat <- maps[[file]]
+info <- infos[[file]]
+mat[mat==-999] <- NA
+mat <- as.matrix(mat)
+topleft = c(xmn=info$V18, xmx=info$V18 + info$V21*info$V24, ymn=info$V20 - info$V22*info$V26, ymx=info$V20)
+topleft <- topleft*1000
+r <- raster::raster(mat, xmn=topleft['xmn'], xmx=topleft['xmx'], ymn=topleft['ymn'], ymx=topleft['ymx'])
+r5km <- aggregate(r, fact=5, fun=mean)
+polys5km <- rasterToPolygons(r5)
+
+
+plot(df5, col=factor(cut(df5$layer, 9), labels=RColorBrewer::brewer.pal(9, 'RdPu')))
+plot(df5, col=as.character(factor(cut(df5$layer, 9), labels=RColorBrewer::brewer.pal(9, 'RdPu'))))
+axis(1)
+
+range(unlist(lapply(maps, function(x) range(x[x >= 0]))))
+
+polydfs <- list()
+pdf('fijnstofgrids.pdf')
+for (file in files){
+    mat <- maps[[file]]
+    info <- infos[[file]]
+    mat[mat==-999] <- NA
+    mat <- as.matrix(mat)
+    topleft = c(xmn=info$V18, xmx=info$V18 + info$V21*info$V24, ymn=info$V20 - info$V22*info$V26, ymx=info$V20)
+    topleft <- topleft*1000
+    r <- raster::raster(mat, xmn=topleft['xmn'], xmx=topleft['xmx'], ymn=topleft['ymn'], ymx=topleft['ymx'])
+    r5km <- raster::aggregate(r, fact=5, fun=mean)
+    polys5km <- raster::rasterToPolygons(r5km)
+    plot(polys5km, col=as.character(factor(cut(df5$layer, 9), labels=RColorBrewer::brewer.pal(9, 'RdPu'))), lwd=0.1)
+    polydfs[[file]] <- polys5km
+    title(main=file)
+    abline(v=102552.030389, h=496472.150836)
+} 
+dev.off()
+
+
+
+# and now either make the pop grid or the fijnstofgrid into polygons
+# fijnstofgrid ought to be aggregated to 5km anyway, probably best
+
+
 nms <- read.table('pm10.csv', nrows=1, sep=',')
 pm10 <- read.csv('pm10.csv', header=T)
 names(pm10) <- c('date', nms[-1])
