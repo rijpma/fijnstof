@@ -26,16 +26,17 @@ path_cbsvier <- '2014-cbs-vierkant-100m/CBSvierkant100m201410.shp'
 rdriehoek <- CRS("+init=epsg:28992")
 wgs <- CRS("+proj=longlat +datum=WGS84 +no_defs ")
 
-widths=c(I=3, I=3, I=3, I=3, X=1, A=10, X=1, A=10, X=1, A=10, X=1, A=22, X=1, A=6, X=1, I=2, X=1, F=8, X=1, F=8, I=3, I=3, X=1, F=8, X=1, F=8)
-setwd('~/downloads/data/fijnstof/conc_pm10_2000-2014')
+# using GCN maps
+#---------------
 
+setwd('~/downloads/data/fijnstof/conc_pm10_2000-2014')
 files <- list.files()
-infos <- list()
+
+maps <- infos <- list()
+widths=c(I=3, I=3, I=3, I=3, X=1, A=10, X=1, A=10, X=1, A=10, X=1, A=22, X=1, A=6, X=1, I=2, X=1, F=8, X=1, F=8, I=3, I=3, X=1, F=8, X=1, F=8)
 for (file in files){
-    # infos[[paste0(gsub('.*_|[.]aps', '', file))]] <- read.fwf(path, widths=widths, nrow=1)    
     infos[[file]] <- read.fwf(file, widths=widths, nrow=1)    
 }
-maps <- list()
 maps[["conc_pm10_2000.aps"]] <- read.table("conc_pm10_2000.aps", skip=1)
 maps[["conc_pm10_2001.aps"]] <- read.table("conc_pm10_2001.aps", skip=1)
 maps[["conc_pm10_2002.aps"]] <- read.fwf("conc_pm10_2002.aps", widths=rep(6, infos[["conc_pm10_2002.aps"]]$V21), skip=1)
@@ -54,12 +55,7 @@ maps[["conc_pm10_2014.aps"]] <- read.table("conc_pm10_2014.aps", skip=1)
 
 setwd('~/downloads/data/fijnstof/')
 
-ranges <- lapply(maps, function(x) range(x[x >= 0]))
-min(unlist(ranges))
-max(unlist(ranges))
-
 range(unlist(lapply(maps, function(x) range(x[x >= 0]))))
-
 polydfs <- list()
 pdf('fijnstofgrids.pdf')
 for (file in files){
@@ -83,8 +79,6 @@ dim(ppop)
 
 polyears <- gsub('.*_|[.].*', '', names(polydfs))
 x <- raster::extract(rpop, polydfs[[1]]) 
-# returns list of values in r for each row of polysdfs data
-# so just sum them and multiply them with the amounts in each poly
 
 # big file!
 # http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2014/2013-kaart-vierkanten-art.htm
@@ -101,17 +95,16 @@ for (i in 1:length(polydfs)){
     rpop <- raster::raster(ppop[i])
     fill$exposurexpersons[i] <- sum(raster::extract(rpop, polys, fun=sum, na.rm=T) * polys@data, na.rm=T)
 
-    # idx <- names(vnlist[[i]])
-    # fill$nstat[i] <- length(idx)
-    # rpop <- raster(ppop[inwvrbs[i]])
-    # fill$nexposed[i] <- sum(extract(rpop, vnlist[[i]], fun=sum, na.rm=T) * pm10_y[i, idx], na.rm=T)
     cat(i, '-')
 }
 
 write.csv(fill, 'fijnstofexpsr.csv')
-plot(exposurexpersons ~ year, data=fill, type='b', bty='l', col=2)
+pdf('fijnstofexpsr.pdf')
+plot(exposurexpersons ~ year, data=fill, type='b', bty='l', col=2, ylab='Persons x average exposure ug/m3')
+dev.off()
 
-# alternative: through direct measurement station data
+# alternative: directly from measurement stations
+#------------------------------------------------
 
 nms <- read.table('pm10.csv', nrows=1, sep=',')
 pm10 <- read.csv('pm10.csv', header=T)
@@ -159,7 +152,6 @@ stations_rd <- spTransform(stations, CRSobj=rdriehoek)
 nl <- readShapeSpatial('nl/nl.shp', proj4string=wgs)
 nl_rd <- spTransform(nl, CRSobj=rdriehoek)
 
-
 pdf('metingen.pdf')
 par(mfrow=c(1, 1))
 plot(nl_rd)
@@ -193,10 +185,10 @@ for (i in 1:nrow(pm10_y)){
 inwvrbs <- grepr('^INW', names(pop@data))
 fill <- data.frame(year=as.numeric(polyears), nstat=NA, exposurexpersons=NA)
 for (i in 1:length(vnlist)){
-    # idx <- names(vnlist[[i]])
-    # fill$nstat[i] <- length(idx)
-    # rpop <- raster(ppop[inwvrbs[i]])
-    # fill$nexposed[i] <- sum(extract(rpop, vnlist[[i]], fun=sum, na.rm=T) * pm10_y[i, idx], na.rm=T)
+    idx <- names(vnlist[[i]])
+    fill$nstat[i] <- length(idx)
+    rpop <- raster(ppop[inwvrbs[i]])
+    fill$nexposed[i] <- sum(extract(rpop, vnlist[[i]], fun=sum, na.rm=T) * pm10_y[i, idx], na.rm=T)
     cat(i, '-')
 }
 
@@ -208,18 +200,3 @@ for (vn in vnlist){
     title(main=)
 }
 dev.off()
-
-# # distance weighted from all stations
-# # 3s for 2284
-# (((nrow(pop) / nrow(pop)) * 3) * nrow(pm10)) / 60 / 60
-# # 1830 hours...
-# distmat <- 
-# for (i in 1:nrow(pop)){
-#     point <- coordinates(pop[i, ])
-#     dists <- spDistsN1(pts=stations_rd, pt=point, longlat=FALSE)
-#     cat(i, '\n')
-# }
-
-# # assuming stable stations
-# rowSums(sqrt(dists) * pm10[2:3, ], na.rm=T) / rowSums(sqrt(dists[!is.na(pm10[2:3, ])]))
-# sum(sqrt(dists) * pm10[2, ], na.rm=T) / sum(sqrt(dists[!is.na(pm10[2, ])]))
