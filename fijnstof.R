@@ -1,6 +1,13 @@
 setwd('~/downloads/data/fijnstof/')
 options(stringsAsFactors=FALSE)
 
+library(sp)
+library(maptools)
+library(deldir)
+library(raster)
+library(rgdal)
+library(jsonlite)
+
 grepr <- function(pattern, x, ...){
     idx <- grep(pattern, x, ...)
     return(x[idx])
@@ -13,14 +20,6 @@ gregexprr <- function(pattern, string){
     out <- substring(string, rgx[[1]], rgx[[1]] + attr(rgx[[1]], 'match.length') - 1)
     return(out)
 }
-
-
-library(sp)
-library(maptools)
-library(deldir)
-library(raster)
-library(rgdal)
-library(jsonlite)
 
 path_cbsvier <- '2014-cbs-vierkant-100m/CBSvierkant100m201410.shp'
 rdriehoek <- CRS("+init=epsg:28992")
@@ -53,10 +52,13 @@ maps[["conc_pm10_2012.aps"]] <- read.table("conc_pm10_2012.aps", skip=1)
 maps[["conc_pm10_2013.aps"]] <- read.table("conc_pm10_2013.aps", skip=1)
 maps[["conc_pm10_2014.aps"]] <- read.table("conc_pm10_2014.aps", skip=1)
 
+range(sapply(maps, function(x) range(x[x > -1])))
+
 setwd('~/downloads/data/fijnstof/')
 
 range(unlist(lapply(maps, function(x) range(x[x >= 0]))))
 polydfs <- list()
+cuts <- seq(from=10, to=70, length.out=10)
 pdf('fijnstofgrids.pdf')
 for (file in files){
     mat <- maps[[file]]
@@ -68,17 +70,16 @@ for (file in files){
     r <- raster::raster(mat, xmn=topleft['xmn'], xmx=topleft['xmx'], ymn=topleft['ymn'], ymx=topleft['ymx'])
     r5km <- raster::aggregate(r, fact=5, fun=mean)
     polys5km <- raster::rasterToPolygons(r5km)
-    plot(polys5km, col=as.character(factor(cut(df5$layer, 9), labels=RColorBrewer::brewer.pal(9, 'RdPu'))), lwd=0.1)
+    polys5km$cut <- cut(polys5km$layer, cuts)
+    labels <- RColorBrewer::brewer.pal(9, 'RdPu')[which(levels(polys5km$cut) %in% unique(polys5km$cut))]
+    plot(polys5km, col=as.character(factor(polys5km$cut, labels=labels)), lwd=0.1)
+    legend('topleft', legend=unique(polys5km$cut), fill=labels)
     polydfs[[file]] <- polys5km
     title(main=file)
     abline(v=102552.030389, h=496472.150836)
 } 
 dev.off()
-length(polydfs)
-dim(ppop)
 
-polyears <- gsub('.*_|[.].*', '', names(polydfs))
-x <- raster::extract(rpop, polydfs[[1]]) 
 
 # big file!
 # http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2014/2013-kaart-vierkanten-art.htm
@@ -88,6 +89,7 @@ pop <- readShapeSpatial(path_cbsvier)
 pop@data[pop@data < 0] <- NA
 ppop <- SpatialPixelsDataFrame(coordinates(pop), data=pop@data[grep('^INW', names(pop@data))], proj4string=rdriehoek)
 
+polyears <- gsub('.*_|[.].*', '', names(polydfs))
 inwvrbs <- grepr('^INW', names(pop@data))
 fill <- data.frame(year=as.numeric(polyears), nstat=NA, exposurexpersons=NA)
 for (i in 1:length(polydfs)){
