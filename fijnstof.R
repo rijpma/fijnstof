@@ -25,6 +25,9 @@ path_cbsvier <- '2014-cbs-vierkant-100m/CBSvierkant100m201410.shp'
 rdriehoek <- CRS("+init=epsg:28992")
 wgs <- CRS("+proj=longlat +datum=WGS84 +no_defs ")
 
+nl <- readShapeSpatial('nl/nl.shp', proj4string=wgs)
+nl_rd <- spTransform(nl, CRSobj=rdriehoek)
+
 # using GCN maps
 #---------------
 
@@ -73,6 +76,7 @@ for (file in files){
     polys5km$cut <- cut(polys5km$layer, cuts)
     labels <- RColorBrewer::brewer.pal(9, 'RdPu')[which(levels(polys5km$cut) %in% unique(polys5km$cut))]
     plot(polys5km, col=as.character(factor(polys5km$cut, labels=labels)), lwd=0.1)
+    plot(nl_rd, add=T, lwd=0.5)
     legend('topleft', legend=unique(polys5km$cut), fill=labels)
     polydfs[[file]] <- polys5km
     title(main=file)
@@ -99,6 +103,17 @@ for (i in 1:length(polydfs)){
 
     cat(i, '-')
 }
+
+pdf('poptest.pdf')
+plot(rpop)
+plot(nl_rd, add=T, lwd=0.5)
+axis(1)
+axis(2)
+plot(polys)
+plot(nl_rd, add=T, lwd=0.5)
+axis(1)
+axis(2)
+dev.off()
 
 write.csv(fill, 'fijnstofexpsr.csv')
 pdf('fijnstofexpsr.pdf')
@@ -150,9 +165,6 @@ y_ave <- y_ave[, colnames(y_ave) %in% ms2$nr]
 
 stations <- SpatialPoints(cbind(ms2$long, ms2$lat), proj4string=wgs)
 stations_rd <- spTransform(stations, CRSobj=rdriehoek)
-
-nl <- readShapeSpatial('nl/nl.shp', proj4string=wgs)
-nl_rd <- spTransform(nl, CRSobj=rdriehoek)
 
 pdf('metingen.pdf')
 par(mfrow=c(1, 1))
