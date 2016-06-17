@@ -54,6 +54,7 @@ maps[["conc_pm10_2011.aps"]] <- read.table("conc_pm10_2011.aps", skip=1)
 maps[["conc_pm10_2012.aps"]] <- read.table("conc_pm10_2012.aps", skip=1)
 maps[["conc_pm10_2013.aps"]] <- read.table("conc_pm10_2013.aps", skip=1)
 maps[["conc_pm10_2014.aps"]] <- read.table("conc_pm10_2014.aps", skip=1)
+maps[["conc_pm10_2015.aps"]] <- read.table("conc_pm10_2015.aps", skip=1)
 
 range(sapply(maps, function(x) range(x[x > -1])))
 
@@ -62,6 +63,7 @@ setwd('~/downloads/data/fijnstof/')
 range(unlist(lapply(maps, function(x) range(x[x >= 0]))))
 polydfs <- list()
 cuts <- seq(from=10, to=70, length.out=10)
+plt <- RColorBrewer::brewer.pal(9, 'RdPu')
 pdf('fijnstofgrids.pdf')
 for (file in files){
     mat <- maps[[file]]
@@ -73,11 +75,13 @@ for (file in files){
     r <- raster::raster(mat, xmn=topleft['xmn'], xmx=topleft['xmx'], ymn=topleft['ymn'], ymx=topleft['ymx'])
     r5km <- raster::aggregate(r, fact=5, fun=mean)
     polys5km <- raster::rasterToPolygons(r5km)
-    polys5km$cut <- cut(polys5km$layer, cuts)
-    labels <- RColorBrewer::brewer.pal(9, 'RdPu')[which(levels(polys5km$cut) %in% unique(polys5km$cut))]
-    plot(polys5km, col=as.character(factor(polys5km$cut, labels=labels)), lwd=0.1)
+    polys5km$col <- plt[cut(polys5km$layer, cuts)]
+    # polys5km$cut <- cut(polys5km$layer, cuts)
+    # labels <- RColorBrewer::brewer.pal(9, 'RdPu')[which(levels(polys5km$cut) %in% unique(polys5km$cut))]
+    plot(polys5km, col=polys5km$col, lwd=0.1)
+    # plot(polys5km, col=as.character(factor(polys5km$cut, labels=labels)), lwd=0.1)
     plot(nl_rd, add=T, lwd=0.5)
-    legend('topleft', legend=unique(polys5km$cut), fill=labels)
+    legend('topleft', legend=levels(cut(polys5km$layer, cuts)), fill=plt)
     polydfs[[file]] <- polys5km
     title(main=file)
     abline(v=102552.030389, h=496472.150836)
@@ -98,10 +102,15 @@ inwvrbs <- grepr('^INW', names(pop@data))
 fill <- data.frame(year=as.numeric(polyears), nstat=NA, exposurexpersons=NA)
 for (i in 1:length(polydfs)){
     polys <- polydfs[[i]]
-    rpop <- raster::raster(ppop[i])
-    fill$exposurexpersons[i] <- sum(raster::extract(rpop, polys, fun=sum, na.rm=T) * polys@data, na.rm=T)
+    if (i <= ncol(ppop)){
+        rpop <- raster::raster(ppop[i])
+    } else { # no grid for 2015
+        rpop <- raster::raster(ppop[i - 1])
+    }
+    fill$exposurexpersons[i] <- sum(raster::extract(rpop, polys, fun=sum, na.rm=T) * polys@data$layer, na.rm=T)
 
     cat(i, '-')
+    }
 }
 
 pdf('poptest.pdf')
