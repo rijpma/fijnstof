@@ -3,7 +3,7 @@ options(stringsAsFactors=FALSE)
 
 library(sp)
 library(maptools)
-library(deldir)
+# library(deldir)
 library(raster)
 library(rgdal)
 library(jsonlite)
@@ -55,13 +55,16 @@ maps[["conc_pm10_2012.aps"]] <- read.table("conc_pm10_2012.aps", skip=1)
 maps[["conc_pm10_2013.aps"]] <- read.table("conc_pm10_2013.aps", skip=1)
 maps[["conc_pm10_2014.aps"]] <- read.table("conc_pm10_2014.aps", skip=1)
 maps[["conc_pm10_2015.aps"]] <- read.table("conc_pm10_2015.aps", skip=1)
+maps[["conc_pm10_2016.aps"]] <- read.table("conc_pm10_2016.aps", skip=1)
 
 range(sapply(maps, function(x) range(x[x > -1])))
+sapply(maps, function(x) mean(x[x > -1]))
 
 setwd('~/downloads/data/fijnstof/')
 
 range(unlist(lapply(maps, function(x) range(x[x >= 0]))))
 polydfs <- list()
+rgs = NULL
 cuts <- seq(from=10, to=70, length.out=10)
 plt <- RColorBrewer::brewer.pal(9, 'RdPu')
 pdf('fijnstofgrids.pdf')
@@ -73,6 +76,7 @@ for (file in files){
     topleft = c(xmn=info$V18, xmx=info$V18 + info$V21*info$V24, ymn=info$V20 - info$V22*info$V26, ymx=info$V20)
     topleft <- topleft*1000
     r <- raster::raster(mat, xmn=topleft['xmn'], xmx=topleft['xmx'], ymn=topleft['ymn'], ymx=topleft['ymx'])
+    rgs = c(rgs, range(getValues(r), na.rm=T))
     r5km <- raster::aggregate(r, fact=5, fun=mean)
     polys5km <- raster::rasterToPolygons(r5km)
     polys5km$col <- plt[cut(polys5km$layer, cuts)]
@@ -88,6 +92,7 @@ for (file in files){
 } 
 dev.off()
 
+dump(rgs)
 
 # big file!
 # http://www.cbs.nl/nl-NL/menu/themas/dossiers/nederland-regionaal/publicaties/geografische-data/archief/2014/2013-kaart-vierkanten-art.htm
@@ -95,6 +100,8 @@ pop <- readShapeSpatial(path_cbsvier)
 # pop <- pop[coordinates(pop)[,1] > 100000 & coordinates(pop)[,1] < 110000 &
 #            coordinates(pop)[,2] > 450000 & coordinates(pop)[,2] < 460000, ]
 pop@data[pop@data < 0] <- NA
+pop@data$INW2015 <- pop@data$INW2014
+pop@data$INW2016 <- pop@data$INW2014
 ppop <- SpatialPixelsDataFrame(coordinates(pop), data=pop@data[grep('^INW', names(pop@data))], proj4string=rdriehoek)
 
 polyears <- gsub('.*_|[.].*', '', names(polydfs))
@@ -109,24 +116,33 @@ for (i in 1:length(polydfs)){
     }
     fill$exposurexpersons[i] <- sum(raster::extract(rpop, polys, fun=sum, na.rm=T) * polys@data$layer, na.rm=T)
 
-    cat(i, '-')
-    }
+    cat(i, '- ')
 }
+
+fill$inhab <- colSums(pop[, inwvrbs]@data, na.rm=T)
+fill$exposure_pp <- fill$exposurexpersons / fill$inhab
+plot(fill$exposurexpersons / fill$inhab, type = 'b')
+plot(fill$exposurexpersons, type = 'b')
 
 pdf('poptest.pdf')
 plot(rpop)
 plot(nl_rd, add=T, lwd=0.5)
 axis(1)
 axis(2)
-plot(polys)
+plot(polys, lwd = 0.1)
 plot(nl_rd, add=T, lwd=0.5)
 axis(1)
 axis(2)
 dev.off()
 
-write.csv(fill, 'fijnstofexpsr.csv')
+write.csv(fill, 'fijnstofexpsr_upd2016.csv')
+
 pdf('fijnstofexpsr.pdf')
 plot(exposurexpersons ~ year, data=fill, type='b', bty='l', col=2, ylab='Persons x average exposure ug/m3')
+dev.off()
+
+pdf('fijnstofexpsr_pp.pdf')
+plot(exposure_pp ~ year, data=fill, type='b', bty='l', col=2, ylab='Population-weighted average exposure ug/m3')
 dev.off()
 
 # alternative: directly from measurement stations
