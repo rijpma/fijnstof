@@ -78,7 +78,11 @@ tabs[['2014']]$year = 2014
 tabs[['2015']]$year = 2015
 tabs[['2016']]$year = 2016
 pop = data.table::rbindlist(tabs, fill = TRUE)
+
 pop[AANT_INW < 0, AANT_INW := NA]
+pop[AANT_VROUW < 0, AANT_VROUW := NA]
+pop[AANT_MAN < 0, AANT_MAN := NA]
+
 pop[, GM_CODE := as.character(GM_CODE)]
 pop[, code := as.numeric(stringi::stri_extract_all_regex(GM_CODE, "\\d+"))]
 
@@ -86,7 +90,11 @@ pop = merge(pop, corop, by.x =c("GM_CODE", "year"), by.y = c("gmcode", "year"), 
 pop[is.na(Corop), list(GM_NAAM, Corop, year)]
 
 pop[, AANT_INW := as.numeric(AANT_INW)]
-out = pop[!is.na(AANT_INW), list(pm10 = sum(pm10m * AANT_INW) / sum(AANT_INW)), by = list(year, Corop, C)]
+pop[, AANT_VROUW := as.numeric(AANT_VROUW)]
+pop[, AANT_MAN := as.numeric(AANT_MAN)]
+out = pop[!is.na(AANT_INW), list(pm10 = sum(pm10m * AANT_INW) / sum(AANT_INW),
+                                pm10_fem = sum(pm10m * AANT_VROUW) / sum(AANT_VROUW),
+                                pm10_mal = sum(pm10m * AANT_MAN) / sum(AANT_MAN)), by = list(year, Corop, C)]
 out2 = pop[!is.na(AANT_INW), list(pm10 = mean(pm10m)), by = list(year, Corop, C)]
 plot(out$pm10, out2$pm10)
 
@@ -110,7 +118,7 @@ hist(pop[year == 2016, pm10m], breaks = 100, main = "2016, GCN means")
 
 dev.off()
 
-data.table::fwrite(out, "~/downloads/data/fijnstof/fijnstof20136_corop.csv")
+data.table::fwrite(out, "~/downloads/data/fijnstof/fijnstof20136_corop_tmf.csv")
 
 # same thing, by province
 gem13 = readxl::read_excel("/Users/auke/Downloads/2013-gemeenten-alfabetisch-per-provincie.xls")

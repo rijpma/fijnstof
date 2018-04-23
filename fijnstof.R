@@ -59,7 +59,9 @@ maps[["conc_pm10_2016.aps"]] <- read.table("conc_pm10_2016.aps", skip=1)
 
 range(sapply(maps, function(x) range(x[x > -1])))
 sapply(maps, function(x) mean(x[x > -1]))
-
+pdf("meanconcentrations.pdf")
+plot(sapply(maps, function(x) mean(x[x > -1])), type = 'b')
+dev.off()
 setwd('~/downloads/data/fijnstof/')
 
 range(unlist(lapply(maps, function(x) range(x[x >= 0]))))

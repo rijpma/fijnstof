@@ -54,6 +54,26 @@ dev.off()
 
 air_pm10_nw[statistic_name=="annual mean" & statistics_year > 2002 & grepl("NL", station_european_code), ][order(statistic_value)]
 
+gcn_ranges = c(25.9, 51.3, 23.1, 49.5, 26.3, 50.8, 29.6, 52, 22.5, 38.1, 20.1, 
+40.6, 20.5, 35.6, 19.2, 50.5, 17.5, 61.2, 17.2, 58.9, 17.9, 60.5, 
+17.1, 52.7, 13.8, 47.1, 14.33, 48.23, 14.18, 54.36, 12.46, 52.87, 
+12.99, 64.45)
+
+# gcn
+range(gcn_ranges)
+
+# corops
+range(nld$pm10)
+
+# airbase
+range(air_pm10_nw[statistic_name=="annual mean" & statistics_year > 2002 & grepl("NL", station_european_code), statistic_value])
+
+# factor
+fctr = range(air_pm10_nw[statistic_name=="annual mean" & statistics_year > 2002 & grepl("NL", station_european_code), statistic_value]) / range(nld$pm10)
+mineur * fctr[1]
+maxeur / fctr[2]
+
+
 head(air_pm10_nw[statistic_name=="annual mean" & statistics_year > 2002, ][order(-statistic_value), list(station_european_code, statistics_year, statistic_value)], 10)
 
 stations = data.table::fread("/Users/auke/Downloads/AirBase_v8_stations.csv")
