@@ -1,5 +1,5 @@
 library("data.table")
-library("maptools")
+library("rgdal")
 library("raster")
 library("stringi")
 library("readxl")
@@ -16,51 +16,59 @@ corop[, year := rep(c(2013:2016), each = n)]
 corop[, gmcode := paste0('GM', stringi::stri_pad_left(G, 4, '0'))]
 corop$Corop[corop$year==2013] = corop[year != 2013, Corop][match( corop[year==2013, C], corop[year != 2013, C])]
 
-maps <- infos <- list()
-widths=c(I=3, I=3, I=3, I=3, X=1, A=10, X=1, A=10, X=1, A=10, X=1, A=22, X=1, A=6, X=1, I=2, X=1, F=8, X=1, F=8, I=3, I=3, X=1, F=8, X=1, F=8)
+maps = infos = list()
+widths=c(I = 3, I = 3, I = 3, I = 3, X = 1, A = 10, X = 1, 
+    A = 10, X = 1, A = 10, X = 1, A = 22, X = 1, A = 6, 
+    X = 1, I = 2, X = 1, F = 8, X = 1, F = 8, I = 3, I = 3, 
+    X = 1, F = 8, X = 1, F = 8)
+
 for (file in files){
-    infos[[file]] <- read.fwf(file, widths=widths, nrow=1)    
+    infos[[file]] = read.fwf(file, widths=widths, nrow=1)    
 }
-maps[["2000"]] <- read.table("conc_pm10_2000.aps", skip=1)
-maps[["2001"]] <- read.table("conc_pm10_2001.aps", skip=1)
-maps[["2002"]] <- read.fwf("conc_pm10_2002.aps", widths=rep(6, infos[["conc_pm10_2002.aps"]]$V21), skip=1)
-maps[["2003"]] <- read.fwf("conc_pm10_2003.aps", widths=rep(6, infos[["conc_pm10_2003.aps"]]$V21), skip=1)
-maps[["2004"]] <- read.fwf("conc_pm10_2004.aps", widths=rep(6, infos[["conc_pm10_2004.aps"]]$V21), skip=1)
-maps[["2005"]] <- read.table("conc_pm10_2005.aps", skip=1)
-maps[["2006"]] <- read.table("conc_pm10_2006.aps", skip=1)
-maps[["2007"]] <- read.table("conc_pm10_2007.aps", skip=1)
-maps[["2008"]] <- read.table("conc_pm10_2008.aps", skip=1)
-maps[["2009"]] <- read.table("conc_pm10_2009.aps", skip=1)
-maps[["2010"]] <- read.table("conc_pm10_2010.aps", skip=1)
-maps[["2011"]] <- read.table("conc_pm10_2011.aps", skip=1)
-maps[["2012"]] <- read.table("conc_pm10_2012.aps", skip=1)
-maps[["2013"]] <- read.table("conc_pm10_2013.aps", skip=1)
-maps[["2014"]] <- read.table("conc_pm10_2014.aps", skip=1)
-maps[["2015"]] <- read.table("conc_pm10_2015.aps", skip=1)
-maps[["2016"]] <- read.table("conc_pm10_2016.aps", skip=1)
+maps[["2000"]] = read.table("conc_pm10_2000.aps", skip = 1)
+maps[["2001"]] = read.table("conc_pm10_2001.aps", skip = 1)
+maps[["2002"]] = read.fwf("conc_pm10_2002.aps", skip = 1,
+    widths = rep(6, infos[["conc_pm10_2002.aps"]]$V21))
+maps[["2003"]] = read.fwf("conc_pm10_2003.aps", skip = 1,
+    widths = rep(6, infos[["conc_pm10_2003.aps"]]$V21))
+maps[["2004"]] = read.fwf("conc_pm10_2004.aps", skip = 1,
+    widths = rep(6, infos[["conc_pm10_2004.aps"]]$V21))
+maps[["2005"]] = read.table("conc_pm10_2005.aps", skip = 1)
+maps[["2006"]] = read.table("conc_pm10_2006.aps", skip = 1)
+maps[["2007"]] = read.table("conc_pm10_2007.aps", skip = 1)
+maps[["2008"]] = read.table("conc_pm10_2008.aps", skip = 1)
+maps[["2009"]] = read.table("conc_pm10_2009.aps", skip = 1)
+maps[["2010"]] = read.table("conc_pm10_2010.aps", skip = 1)
+maps[["2011"]] = read.table("conc_pm10_2011.aps", skip = 1)
+maps[["2012"]] = read.table("conc_pm10_2012.aps", skip = 1)
+maps[["2013"]] = read.table("conc_pm10_2013.aps", skip = 1)
+maps[["2014"]] = read.table("conc_pm10_2014.aps", skip = 1)
+maps[["2015"]] = read.table("conc_pm10_2015.aps", skip = 1)
+maps[["2016"]] = read.table("conc_pm10_2016.aps", skip = 1)
 
 names(infos) = gsub(".*_|\\.aps", "", names(infos))
 
 popmaps = list()
-# popmaps[["2003"]] = maptools::readShapeSpatial("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2003-buurt-kaart/gem2003.shp")
-# popmaps[["2004"]] = maptools::readShapeSpatial("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2004-buurtkaart-data/gem_2004_gen.shp")
-popmaps[["2013"]] = maptools::readShapeSpatial("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2013/wijk_2013.shp")
-popmaps[["2014"]] = maptools::readShapeSpatial("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2014/wijk_2014.shp")
-popmaps[["2015"]] = maptools::readShapeSpatial("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2015/wijk_2015.shp")
-popmaps[["2016"]] = maptools::readShapeSpatial("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2016/wijk_2016.shp")
+# popmaps[["2003"]] = rgdal::readOGR("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2003-buurt-kaart/gem2003")
+# popmaps[["2004"]] = rgdal::readOGR("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2004-buurtkaart-data/gem_2004_gen")
+popmaps[["2013"]] = rgdal::readOGR("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2013/wijk_2013.shp", stringsAsFactors = FALSE)
+popmaps[["2014"]] = rgdal::readOGR("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2014/wijk_2014.shp", stringsAsFactors = FALSE)
+popmaps[["2015"]] = rgdal::readOGR("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2015/wijk_2015.shp", stringsAsFactors = FALSE)
+popmaps[["2016"]] = rgdal::readOGR("/Users/auke/Downloads/data/fijnstof/buurtkaarten/2016/wijk_2016.shp", stringsAsFactors = FALSE)
 
+# this loop can take a while because of extract()
 munics = list()
 for (year in names(popmaps)){
-    mat <- maps[[year]]
-    info <- infos[[year]]
-    mat[mat==-999] <- NA
-    mat <- as.matrix(mat)
-    topleft = c(xmn=info$V18, xmx=info$V18 + info$V21*info$V24, ymn=info$V20 - info$V22*info$V26, ymx=info$V20)
-    topleft <- topleft*1000
-    r <- raster::raster(mat, xmn=topleft['xmn'], xmx=topleft['xmx'], ymn=topleft['ymn'], ymx=topleft['ymx'])
+    mat = maps[[year]]
+    info = infos[[year]]
+    mat[mat==-999] = NA
+    mat = as.matrix(mat)
+    bbox = c(xmn = info$V18, xmx = info$V18 + info$V21*info$V24, 
+        ymn = info$V20 - info$V22*info$V26, ymx = info$V20)
+    bbox = bbox*1000
+    r = raster::raster(mat, xmn=bbox['xmn'], xmx=bbox['xmx'], ymn=bbox['ymn'], ymx=bbox['ymx'])
     popmaps[[year]]@data$pm10m = raster::extract(r, popmaps[[year]], fun = mean, na.rm=T)
     popmaps[[year]]@data$pm10s = raster::extract(r, popmaps[[year]], fun = sum, na.rm=T)
-    # sum? 
     cat(year, '\n')
 }
 
@@ -72,13 +80,12 @@ tabs[['2016']]$year = 2016
 pop = data.table::rbindlist(tabs, fill = TRUE)
 pop[AANT_INW < 0, AANT_INW := NA]
 pop[, GM_CODE := as.character(GM_CODE)]
+pop[, code := as.numeric(stringi::stri_extract_all_regex(GM_CODE, "\\d+"))]
 
 pop = merge(pop, corop, by.x =c("GM_CODE", "year"), by.y = c("gmcode", "year"), all.x = T)
 pop[is.na(Corop), list(GM_NAAM, Corop, year)]
-pop = pop[!is.na(Corop), ]
 
-# check values
-
+pop[, AANT_INW := as.numeric(AANT_INW)]
 out = pop[!is.na(AANT_INW), list(pm10 = sum(pm10m * AANT_INW) / sum(AANT_INW)), by = list(year, Corop, C)]
 out2 = pop[!is.na(AANT_INW), list(pm10 = mean(pm10m)), by = list(year, Corop, C)]
 plot(out$pm10, out2$pm10)
@@ -105,7 +112,7 @@ dev.off()
 
 data.table::fwrite(out, "~/downloads/data/fijnstof/fijnstof20136_corop.csv")
 
-
+# same thing, by province
 gem13 = readxl::read_excel("/Users/auke/Downloads/2013-gemeenten-alfabetisch-per-provincie.xls")
 gem14 = readxl::read_excel("/Users/auke/Downloads/2014-gemeenten-alfabetisch-per-provincie.xls")
 gem15 = readxl::read_excel("/Users/auke/Downloads/Gemeenten alfabetisch per provincie 2015.xls")
