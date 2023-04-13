@@ -1,8 +1,8 @@
 library(data.table)
 library(countrycode)
 
-air <- data.table::fread('~/downloads/data/AirBase_v8_statistics.csv')
-ctrs <- read.csv("~/onedrive/uurabo/nwcountries.csv")
+air <- data.table::fread('~/data/fijnstof/AirBase_v8_statistics.csv')
+ctrs <- read.csv("~/data/fijnstof/nwcountries.csv")
 iso2c <- countrycode::countrycode(ctrs$iso3c, 'iso3c', 'iso2c')
 ctrs$iso2c <- countrycode::countrycode(ctrs$iso3c, 'iso3c', 'iso2c')
 
@@ -23,7 +23,7 @@ air_pm10_nw[statistic_name=="annual mean", mean(statistic_value), by=list(ctr, s
 air_pm10_nw[statistic_name=="annual mean", mean(statistic_value), by=list(ctr, statistics_year, statistic_name)][, range(V1)]
 
 air_pm10_eur = air_pm10_nw[statistic_name=="annual mean", list(mean = mean(statistic_value), max = max(statistic_value), min = min(statistic_value), var = var(statistic_value)), by = list(ctr, statistics_year)]
-data.table::fwrite(air_pm10_eur[order(ctr, statistics_year), ], "~/downloads/data/fijnstof/fijnstof_eur.csv")
+data.table::fwrite(air_pm10_eur[order(ctr, statistics_year), ], "~/data/fijnstof/fijnstof_eur.csv")
 
 mineur <- min(air_pm10_nw[statistic_name=="annual mean" & statistics_year > 2002, min(statistic_value), by=list(ctr, statistics_year, statistic_name)][, range(V1)])
 maxeur <- max(air_pm10_nw[statistic_name=="annual mean" & statistics_year > 2002, max(statistic_value), by=list(ctr, statistics_year, statistic_name)][, range(V1)])
