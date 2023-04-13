@@ -302,7 +302,11 @@ toplot[m13 < 0, m13 := NA]
 ggplot(toplot, aes(m13, col = year)) + geom_density(bw = 1)
 
 
-out = pop[!is.na(AANT_INW), list(pm10 = sum(pm10m * AANT_INW) / sum(AANT_INW)), by = list(year)]
+out = pop[!is.na(AANT_INW), 
+    list(pm10_wgtd = sum(pm10m * AANT_INW) / sum(AANT_INW),
+        pm10_unwgtd = mean(pm10m)
+    ), 
+    by = list(year)]
 data.table::fwrite(out, "~/data/fijnstof/fijnstof201420_nationaal.csv")
 
 
